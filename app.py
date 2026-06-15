@@ -1,51 +1,48 @@
 """
 ReLoop — keep it in the loop
-A pure-Python Streamlit app. No JavaScript, Java or C++.
-
-Run locally:   pip install streamlit  &&  streamlit run app.py
-Host free:     push to GitHub, then deploy on https://share.streamlit.io
+Pure-Python Streamlit app. Minimalist green/white redesign.
+Run:   pip install streamlit  &&  streamlit run app.py
+Host:  push to GitHub, deploy on https://share.streamlit.io
 """
 
+import os
 import streamlit as st
 
-# ----------------------------------------------------------------------
-# Page setup
-# ----------------------------------------------------------------------
 st.set_page_config(page_title="ReLoop — keep it in the loop",
                    page_icon="🌱", layout="wide")
+
+# Real photos: drop files named <category>.jpg in an "images/" folder
+# (e.g. images/clothes.jpg). If a file is missing, a clean drawn icon
+# is shown instead, so the app always works.
+def cat_image_path(cid):
+    for ext in (".jpg", ".jpeg", ".png", ".webp"):
+        p = os.path.join("images", cid + ext)
+        if os.path.exists(p):
+            return p
+    return None
 
 # ----------------------------------------------------------------------
 # Data
 # ----------------------------------------------------------------------
 LANES = {
-    "reuse": {
-        "label": "Reuse",
-        "accent": "#169d57",
-        "cats": [
-            ("clothes",   "👕", "Clothes & footwear", "Lots & bundles", "Outgrown lots, age-banded — for families, resellers & NGOs."),
-            ("toys",      "🧸", "Toys & games",       "Bulk buyers",    "Bundles for daycares, NGOs & event hosts."),
-            ("furniture", "🪑", "Furniture",          "Single or lots", "Usable or restore-able — for homes & refurbishers."),
-            ("books",     "📚", "Books & stationery", "Lots",           "Bundles for schools, libraries & NGOs."),
-            ("kitchen",   "🍽️", "Kitchen & household","Reuse",          "Utensils, jars, containers still going strong."),
-            ("tools",     "🛠️", "Tools & hardware",   "Reuse",          "For makers, repairers & small workshops."),
-        ],
-    },
-    "recycle": {
-        "label": "Recycle",
-        "accent": "#0d9488",
-        "cats": [
-            ("plastic", "🧴", "Plastic",           "By weight", "Bottles, containers, packaging, broken plastic & toys."),
-            ("paper",   "📦", "Paper & cardboard", "By weight", "Cartons, newspaper, office paper — clean & dry."),
-            ("metal",   "🥫", "Metal",             "By weight", "Cans, scrap steel, spent utensils — pays best per kg."),
-            ("glass",   "🫙", "Glass",             "By weight", "Bottles & jars, sorted by colour for cullet."),
-            ("textile", "🧵", "Textile scrap",     "By weight", "Worn-out clothes & off-cuts → shredded for fibre."),
-            ("wood",    "🪵", "Wood",              "By weight", "Off-cuts, pallets & broken furniture wood."),
-        ],
-    },
+    "reuse": {"label": "Reuse", "cats": [
+        ("clothes",   "Clothes & footwear", "Lots & bundles", "Outgrown lots, age-banded — for families, resellers & NGOs."),
+        ("toys",      "Toys & games",       "Bulk buyers",    "Bundles for daycares, NGOs & event hosts."),
+        ("furniture", "Furniture",          "Single or lots", "Usable or restore-able — for homes & refurbishers."),
+        ("books",     "Books & stationery", "Lots",           "Bundles for schools, libraries & NGOs."),
+        ("kitchen",   "Kitchen & household","Reuse",          "Utensils, jars, containers still going strong."),
+        ("tools",     "Tools & hardware",   "Reuse",          "For makers, repairers & small workshops."),
+    ]},
+    "recycle": {"label": "Recycle", "cats": [
+        ("plastic", "Plastic",           "By weight", "Bottles, containers, packaging, broken plastic & toys."),
+        ("paper",   "Paper & cardboard", "By weight", "Cartons, newspaper, office paper — clean & dry."),
+        ("metal",   "Metal",             "By weight", "Cans, scrap steel, spent utensils — pays best per kg."),
+        ("glass",   "Glass",             "By weight", "Bottles & jars, sorted by colour for cullet."),
+        ("textile", "Textile scrap",     "By weight", "Worn-out clothes & off-cuts → shredded for fibre."),
+        ("wood",    "Wood",              "By weight", "Off-cuts, pallets & broken furniture wood."),
+    ]},
 }
 
-# Reuse seed:   (title, meta, price, buyer)
-# Recycle seed: (title, meta, rate, weight)
 SEED = {
     "clothes": [("Toddler clothes lot — 25 pcs", "Ages 2–4 · good condition", "₹450 / lot", "Families & resellers"),
                 ("School uniforms ×12", "Lightly used", "₹600 / lot", "Schools & NGOs"),
@@ -77,232 +74,329 @@ SEED = {
                 ("Broken furniture wood", "Salvageable", "₹5 / kg", "28 kg available")],
 }
 
-EMOJI = {cid: e for lane in LANES.values() for (cid, e, *_rest) in lane["cats"]}
+FACTS = [
+    "A plastic bottle can take up to 450 years to break down in a landfill.",
+    "Less than 10% of all plastic ever made has actually been recycled.",
+    "Reusing an item beats recycling it — it skips all the energy of remaking.",
+    "Recycling paper uses far less water and energy than making it from fresh wood.",
+]
 
 # ----------------------------------------------------------------------
-# Session state
+# Minimalist item illustrations (custom SVG — always appropriate)
 # ----------------------------------------------------------------------
-def init_state():
+ICON = {
+    "clothes": (
+        "<defs><linearGradient id='clg' x1='0' y1='0' x2='0' y2='1'>"
+        "<stop offset='0' stop-color='#46c47e'/><stop offset='1' stop-color='#138a4c'/></linearGradient></defs>"
+        "<path d='M46 40 L34 47 Q31 49 33 53 L38 62 Q40 65 43 63 L47 60 V86 Q47 89 50 89 H70 Q73 89 73 86 V60 "
+        "L77 63 Q80 65 82 62 L87 53 Q89 49 86 47 L74 40 L68 40 Q60 49 52 40 Z' fill='url(#clg)'/>"
+        "<path d='M52 40 Q60 49 68 40' fill='none' stroke='#0c6e3d' stroke-width='2.4'/>"
+        "<path d='M47 60 V86 H56 V60 Z' fill='#ffffff' opacity='0.10'/>"
+        "<path d='M73 60 V86 H66 V60 Z' fill='#000000' opacity='0.06'/>"),
+    "toys": (
+        "<defs><radialGradient id='tob' cx='38%' cy='32%' r='72%'>"
+        "<stop offset='0' stop-color='#8fd6ff'/><stop offset='1' stop-color='#1f7fce'/></radialGradient></defs>"
+        "<circle cx='60' cy='60' r='27' fill='url(#tob)'/>"
+        "<path d='M60 33 A27 27 0 0 1 87 60 L60 60 Z' fill='#ffd23f' opacity='0.92'/>"
+        "<path d='M60 60 L60 87 A27 27 0 0 1 33 60 Z' fill='#ff5d5d' opacity='0.92'/>"
+        "<path d='M33 60 A27 27 0 0 1 60 33 L60 60 Z' fill='#ffffff' opacity='0.85'/>"
+        "<ellipse cx='50' cy='49' rx='8' ry='5' fill='#ffffff' opacity='0.55'/>"),
+    "furniture": (
+        "<defs><linearGradient id='fug' x1='0' y1='0' x2='1' y2='0'>"
+        "<stop offset='0' stop-color='#cf9c5e'/><stop offset='1' stop-color='#a9763c'/></linearGradient></defs>"
+        "<path d='M44 40 H52 V64 H44 Z' fill='url(#fug)'/>"
+        "<path d='M44 40 H72 V46 H44 Z' fill='url(#fug)'/>"
+        "<path d='M44 63 H74 V69 H44 Z' fill='url(#fug)'/>"
+        "<path d='M44 69 H74 V72 H44 Z' fill='#8a5f2e'/>"
+        "<path d='M45 72 H51 V92 H45 Z' fill='#9c6c36'/>"
+        "<path d='M67 72 H73 V92 H67 Z' fill='#8a5f2e'/>"
+        "<path d='M44 40 H72 V42 H44 Z' fill='#ffffff' opacity='0.18'/>"),
+    "books": (
+        "<defs>"
+        "<linearGradient id='bk1' x1='0' x2='1'><stop offset='0' stop-color='#33a564'/><stop offset='1' stop-color='#1c7a44'/></linearGradient>"
+        "<linearGradient id='bk2' x1='0' x2='1'><stop offset='0' stop-color='#ecbf63'/><stop offset='1' stop-color='#cf9a3a'/></linearGradient>"
+        "<linearGradient id='bk3' x1='0' x2='1'><stop offset='0' stop-color='#5aa0e0'/><stop offset='1' stop-color='#3a7fc0'/></linearGradient></defs>"
+        "<rect x='34' y='70' width='52' height='13' rx='2.5' fill='url(#bk3)'/><rect x='37' y='72.5' width='3' height='8' fill='#ffffff' opacity='0.6'/>"
+        "<rect x='38' y='57' width='46' height='13' rx='2.5' fill='url(#bk2)'/><rect x='41' y='59.5' width='3' height='8' fill='#ffffff' opacity='0.6'/>"
+        "<rect x='33' y='44' width='50' height='13' rx='2.5' fill='url(#bk1)'/><rect x='36' y='46.5' width='3' height='8' fill='#ffffff' opacity='0.6'/>"),
+    "kitchen": (
+        "<defs><linearGradient id='kig' x1='0' x2='1'>"
+        "<stop offset='0' stop-color='#e9edf1'/><stop offset='0.5' stop-color='#aeb8c2'/><stop offset='1' stop-color='#ced6dd'/></linearGradient></defs>"
+        "<rect x='30' y='56' width='10' height='6' rx='3' fill='#8b95a0'/><rect x='80' y='56' width='10' height='6' rx='3' fill='#8b95a0'/>"
+        "<path d='M40 56 H80 L77 84 Q77 86 75 86 H45 Q43 86 43 84 Z' fill='url(#kig)'/>"
+        "<rect x='37' y='51' width='46' height='7' rx='3.5' fill='#c2cad2'/>"
+        "<rect x='49' y='60' width='5' height='22' rx='2.5' fill='#ffffff' opacity='0.55'/>"),
+    "tools": (
+        "<defs>"
+        "<linearGradient id='tlh' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#dde3e9'/><stop offset='1' stop-color='#9aa4ae'/></linearGradient>"
+        "<linearGradient id='tlw' x1='0' x2='1'><stop offset='0' stop-color='#cb9c5e'/><stop offset='1' stop-color='#a2733c'/></linearGradient></defs>"
+        "<rect x='56' y='50' width='9' height='40' rx='4' fill='url(#tlw)'/>"
+        "<path d='M40 41 Q33 43 36 52 L43 52 V46 Z' fill='#8a949e'/>"
+        "<path d='M41 40 H73 Q77 40 77 44 V51 H65 V49 H56 V51 H43 V44 Q41 40 41 40 Z' fill='url(#tlh)'/>"
+        "<rect x='45' y='43' width='22' height='3' rx='1.5' fill='#ffffff' opacity='0.5'/>"),
+    "plastic": (
+        "<defs><linearGradient id='plg' x1='0' x2='1'>"
+        "<stop offset='0' stop-color='#cfeafc'/><stop offset='0.5' stop-color='#93c9f0'/><stop offset='1' stop-color='#cfeafc'/></linearGradient></defs>"
+        "<rect x='53' y='27' width='14' height='9' rx='2' fill='#138a4c'/>"
+        "<rect x='55' y='36' width='10' height='6' fill='#9fcde9'/>"
+        "<path d='M50 42 Q48 47 48 53 V83 Q48 89 54 89 H66 Q72 89 72 83 V53 Q72 47 70 42 Q66 40 60 40 Q54 40 50 42 Z' fill='url(#plg)'/>"
+        "<path d='M48 60 H72 M48 68 H72' stroke='#7fb8e0' stroke-width='1.4' opacity='0.6'/>"
+        "<rect x='53' y='46' width='4' height='40' rx='2' fill='#ffffff' opacity='0.6'/>"),
+    "paper": (
+        "<defs>"
+        "<linearGradient id='pa1' x1='0' x2='1'><stop offset='0' stop-color='#dcb784'/><stop offset='1' stop-color='#c69d63'/></linearGradient>"
+        "<linearGradient id='pa2' x1='0' x2='1'><stop offset='0' stop-color='#c19a5e'/><stop offset='1' stop-color='#a67d44'/></linearGradient></defs>"
+        "<path d='M42 54 L42 46 L52 44 L60 48 Z' fill='#cda268'/>"
+        "<path d='M78 54 L78 46 L68 44 L60 48 Z' fill='#bb8f54'/>"
+        "<path d='M42 54 L60 60 V88 L42 82 Z' fill='url(#pa1)'/>"
+        "<path d='M78 54 L60 60 V88 L78 82 Z' fill='url(#pa2)'/>"
+        "<path d='M42 54 L60 48 L78 54 L60 60 Z' fill='#e7c794'/>"),
+    "metal": (
+        "<defs><linearGradient id='mtg' x1='0' x2='1'>"
+        "<stop offset='0' stop-color='#cdd4db'/><stop offset='0.35' stop-color='#eef2f5'/>"
+        "<stop offset='0.65' stop-color='#aab4bd'/><stop offset='1' stop-color='#d6dce2'/></linearGradient></defs>"
+        "<rect x='46' y='38' width='28' height='44' rx='4' fill='url(#mtg)'/>"
+        "<ellipse cx='60' cy='82' rx='14' ry='4' fill='#b8c0c8'/>"
+        "<ellipse cx='60' cy='38' rx='14' ry='4' fill='#e6eaee'/>"
+        "<ellipse cx='60' cy='38' rx='10' ry='2.6' fill='#9aa4ae'/>"
+        "<rect x='46' y='52' width='28' height='16' fill='#138a4c' opacity='0.92'/>"
+        "<rect x='50' y='40' width='3' height='40' fill='#ffffff' opacity='0.55'/>"),
+    "glass": (
+        "<defs><linearGradient id='glg' x1='0' x2='1'>"
+        "<stop offset='0' stop-color='#d2efe2'/><stop offset='0.5' stop-color='#a7dcc7'/><stop offset='1' stop-color='#d2efe2'/></linearGradient></defs>"
+        "<rect x='48' y='33' width='24' height='10' rx='3' fill='#138a4c'/>"
+        "<path d='M48 44 Q60 39 72 44 V80 Q72 85 67 85 H53 Q48 85 48 80 Z' fill='url(#glg)' stroke='#7cc3a8' stroke-width='1.5'/>"
+        "<rect x='52' y='49' width='4' height='31' rx='2' fill='#ffffff' opacity='0.6'/>"
+        "<rect x='52' y='66' width='16' height='14' rx='2' fill='#7cc3a8' opacity='0.35'/>"),
+    "textile": (
+        "<defs>"
+        "<linearGradient id='tx1' x1='0' x2='1'><stop offset='0' stop-color='#f0a0b4'/><stop offset='1' stop-color='#d96f8c'/></linearGradient>"
+        "<linearGradient id='tx2' x1='0' x2='1'><stop offset='0' stop-color='#8ccfac'/><stop offset='1' stop-color='#56a87f'/></linearGradient>"
+        "<linearGradient id='tx3' x1='0' x2='1'><stop offset='0' stop-color='#a6bce6'/><stop offset='1' stop-color='#7090c8'/></linearGradient></defs>"
+        "<path d='M40 74 Q40 70 44 70 H80 Q84 70 84 74 V80 Q84 84 80 84 H44 Q40 84 40 80 Z' fill='url(#tx3)'/>"
+        "<path d='M40 74 Q44 71 44 78 Q44 84 40 80 Z' fill='#5f7fb8'/>"
+        "<path d='M42 63 Q42 59 46 59 H82 Q86 59 86 63 V69 Q86 73 82 73 H46 Q42 73 42 69 Z' fill='url(#tx2)'/>"
+        "<path d='M42 63 Q46 60 46 67 Q46 73 42 69 Z' fill='#479472'/>"
+        "<path d='M44 52 Q44 48 48 48 H84 Q88 48 88 52 V58 Q88 62 84 62 H48 Q44 62 44 58 Z' fill='url(#tx1)'/>"
+        "<path d='M44 52 Q48 49 48 56 Q48 62 44 58 Z' fill='#c75f7c'/>"),
+    "wood": (
+        "<defs>"
+        "<linearGradient id='wdg' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#d6ab6e'/><stop offset='1' stop-color='#b07f44'/></linearGradient>"
+        "<radialGradient id='wde' cx='50%' cy='50%' r='55%'><stop offset='0' stop-color='#eccea0'/><stop offset='1' stop-color='#bd9355'/></radialGradient></defs>"
+        "<path d='M36 52 H72 V74 H36 Z' fill='url(#wdg)'/>"
+        "<path d='M40 57 H68 M40 63 H68 M40 69 H68' stroke='#9a6e3a' stroke-width='1.2' opacity='0.5'/>"
+        "<ellipse cx='72' cy='63' rx='9' ry='11' fill='url(#wde)'/>"
+        "<ellipse cx='72' cy='63' rx='6' ry='7.5' fill='none' stroke='#a87a44' stroke-width='1.2'/>"
+        "<ellipse cx='72' cy='63' rx='3' ry='4' fill='none' stroke='#a87a44' stroke-width='1.2'/>"),
+}
+
+def illo(cid):
+    return (
+        "<div class='rl-img'><svg viewBox='0 0 120 120' width='110' height='110' xmlns='http://www.w3.org/2000/svg'>"
+        "<defs><radialGradient id='bgmint' cx='40%' cy='34%' r='75%'>"
+        "<stop offset='0%' stop-color='#f4fbf7'/><stop offset='100%' stop-color='#dff0e7'/></radialGradient></defs>"
+        "<circle cx='60' cy='60' r='56' fill='url(#bgmint)'/>"
+        "<ellipse cx='60' cy='99' rx='27' ry='5' fill='#0b3a22' opacity='0.10'/>"
+        + ICON.get(cid, "") + "</svg></div>")
+
+# ----------------------------------------------------------------------
+# State
+# ----------------------------------------------------------------------
+def init():
     d = st.session_state
-    d.setdefault("page", "auth")
-    d.setdefault("user", {})
-    d.setdefault("health", 0.18)
-    d.setdefault("loops", 0)
-    d.setdefault("kg", 0.0)
-    d.setdefault("action", "shop")
-    d.setdefault("lane", "reuse")
-    d.setdefault("category", None)
-    d.setdefault("posted", {})       # category -> list of dicts
-    d.setdefault("rescued", set())   # remembers which seed items were taken
+    d.setdefault("page", "auth"); d.setdefault("user", {})
+    d.setdefault("health", 0.18); d.setdefault("loops", 0); d.setdefault("kg", 0.0)
+    d.setdefault("action", "shop"); d.setdefault("lane", "reuse"); d.setdefault("category", None)
+    d.setdefault("posted", {}); d.setdefault("rescued", set())
+init()
 
-init_state()
-
-def go(page):
-    st.session_state.page = page
-
-def state_word(h):
-    return "Choking" if h < 0.33 else ("Recovering" if h < 0.7 else "Thriving")
-
-def reward(points, kg):
-    st.session_state.health = min(1.0, st.session_state.health + points / 100)
-    st.session_state.loops += 1
-    st.session_state.kg += kg
-
-def lerp(c1, c2, t):
-    """blend two hex colours by t in 0..1 -> hex string"""
-    a = tuple(int(c1[i:i+2], 16) for i in (1, 3, 5))
-    b = tuple(int(c2[i:i+2], 16) for i in (1, 3, 5))
-    m = tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
-    return "#%02x%02x%02x" % m
+def go(p): st.session_state.page = p
+def word(h): return "Choking" if h < .33 else ("Recovering" if h < .7 else "Thriving")
+def reward(pts, kg):
+    st.session_state.health = min(1.0, st.session_state.health + pts/100)
+    st.session_state.loops += 1; st.session_state.kg += kg
 
 # ----------------------------------------------------------------------
-# Styling (CSS only — no scripts)
+# Styling — minimalist green / white
 # ----------------------------------------------------------------------
 st.markdown("""
 <style>
-.block-container{max-width:1080px;padding-top:1.2rem}
-h1,h2,h3{font-family:Georgia,serif;letter-spacing:-.01em}
-.rl-card{background:#fff;border:1px solid #e7e7e0;border-radius:16px;padding:18px 18px 14px;
-         box-shadow:0 14px 34px -22px rgba(20,30,25,.5);height:100%}
-.rl-tile{height:120px;border-radius:12px;display:flex;align-items:center;justify-content:center;
-         font-size:54px;margin-bottom:10px;filter:drop-shadow(0 5px 9px rgba(0,0,0,.12))}
-.rl-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;
-        background:#eef3ea;color:#0f7d44;margin-bottom:6px}
-.rl-tag.recycle{color:#0a6e64;background:#e6f3f1}
-.rl-name{font-family:Georgia,serif;font-weight:600;font-size:17px;margin:2px 0}
+.stApp{background:#ffffff}
+.block-container{max-width:1080px;padding-top:1rem}
+h1,h2,h3{font-family:Georgia,'Times New Roman',serif;color:#143d2b;letter-spacing:-.01em}
+p,div,span,label{color:#2c3a33}
+.rl-facts{overflow:hidden;background:#169d57;border-radius:12px;margin:0 0 18px}
+.rl-facts span{display:inline-block;white-space:nowrap;padding:9px 0;color:#fff;font-weight:600;font-size:14px;
+                animation:rl-scroll 30s linear infinite}
+@keyframes rl-scroll{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+.rl-brand{display:flex;align-items:center;gap:10px;font-family:Georgia,serif;font-weight:700;font-size:24px;color:#143d2b}
+.rl-leaf{width:30px;height:30px;border-radius:50%;background:#169d57;display:flex;align-items:center;justify-content:center;color:#fff}
+.rl-img{height:120px;display:flex;align-items:center;justify-content:center;background:#f4faf6;border-radius:12px;margin-bottom:10px}
+.rl-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:#eaf6ee;color:#0f7d44}
+.rl-name{font-family:Georgia,serif;font-weight:600;font-size:16px;color:#143d2b;margin:6px 0 2px}
 .rl-sub{font-size:12.5px;color:#5d6b63;line-height:1.35}
-.rl-price{font-family:Georgia,serif;font-weight:700;font-size:18px;margin-top:4px}
-.rl-buyer{display:inline-block;font-size:11px;font-weight:600;color:#0f7d44;background:#eef3ea;
-          padding:3px 8px;border-radius:999px;margin-top:4px}
 .rl-meta{font-size:12px;color:#7a857d}
+.rl-price{font-family:Georgia,serif;font-weight:700;font-size:17px;color:#143d2b;margin-top:4px}
+.rl-buyer{display:inline-block;font-size:11px;font-weight:600;color:#0f7d44;background:#eaf6ee;padding:2px 8px;border-radius:999px;margin-top:3px}
+.stButton>button{border-radius:10px;border:1px solid #cfe6d8;font-weight:600}
+.stButton>button[kind="primary"]{background:#169d57;border-color:#169d57}
+hr{margin:1rem 0;border-color:#e7f0ea}
 </style>
 """, unsafe_allow_html=True)
 
+def facts_ribbon():
+    text = "   •   ".join(FACTS) + "   •   "
+    st.markdown(f"<div class='rl-facts'><span>🌍 {text}🌍 {text}</span></div>", unsafe_allow_html=True)
+
+def header():
+    st.markdown("<div class='rl-brand'><span class='rl-leaf'>🌱</span> ReLoop</div>", unsafe_allow_html=True)
+
 # ----------------------------------------------------------------------
-# Sidebar: brand + living planet meter
+# Sidebar (compact)
 # ----------------------------------------------------------------------
 def sidebar():
-    h = st.session_state.health
-    sky  = lerp("#6b6253", "#7ec8f2", h)
-    land = lerp("#7a6f54", "#5fae54", h)
-    leaf_op = round(h, 2)
-    trash_op = round(1 - h, 2)
-    svg = f"""
-    <svg viewBox="0 0 300 180" width="100%" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0" y="0" width="300" height="180" fill="{sky}"/>
-      <circle cx="245" cy="40" r="20" fill="#ffe7a3" opacity="{leaf_op}"/>
-      <path d="M0 130 Q75 115 150 130 T300 130 V180 H0 Z" fill="{land}"/>
-      <rect x="143" y="95" width="9" height="45" rx="3" fill="#4a3b2a" opacity="{round(0.4+trash_op*0.6,2)}"/>
-      <circle cx="147" cy="92" r="22" fill="#3f9e4a" opacity="{leaf_op}"/>
-      <circle cx="128" cy="100" r="15" fill="#3f9e4a" opacity="{leaf_op}"/>
-      <circle cx="166" cy="102" r="16" fill="#3f9e4a" opacity="{leaf_op}"/>
-      <rect x="40" y="150" width="16" height="10" rx="2" fill="#9a8d6b" opacity="{trash_op}"/>
-      <circle cx="250" cy="158" r="6" fill="#8d8068" opacity="{trash_op}"/>
-    </svg>"""
-    st.sidebar.markdown("### 🌱 ReLoop")
+    if not st.session_state.user:
+        return
+    st.sidebar.markdown("<div class='rl-brand'><span class='rl-leaf'>🌱</span> ReLoop</div>", unsafe_allow_html=True)
     st.sidebar.caption("Keep it in the loop")
-    if st.session_state.user:
-        st.sidebar.markdown(svg, unsafe_allow_html=True)
-        st.sidebar.progress(h, text=f"Planet: **{state_word(h)}**")
-        c1, c2 = st.sidebar.columns(2)
-        c1.metric("Items looped", st.session_state.loops)
-        c2.metric("Kept from landfill", f"{st.session_state.kg:.1f} kg")
-        st.sidebar.divider()
-        if st.sidebar.button("🏠 Home", use_container_width=True):
-            go("hub"); st.rerun()
-        if st.sidebar.button("Log out", use_container_width=True):
-            for k in list(st.session_state.keys()):
-                del st.session_state[k]
-            st.rerun()
+    st.sidebar.divider()
+    st.sidebar.progress(st.session_state.health, text=f"Planet: **{word(st.session_state.health)}**")
+    c1, c2 = st.sidebar.columns(2)
+    c1.metric("Looped", st.session_state.loops)
+    c2.metric("Saved", f"{st.session_state.kg:.1f} kg")
+    st.sidebar.divider()
+    if st.sidebar.button("🏠 Home", use_container_width=True):
+        go("hub"); st.rerun()
+    if st.sidebar.button("Log out", use_container_width=True):
+        for k in list(st.session_state.keys()): del st.session_state[k]
+        st.rerun()
 
 # ----------------------------------------------------------------------
 # Pages
 # ----------------------------------------------------------------------
 def page_auth():
-    st.title("ReLoop")
-    st.caption("KEEP IT IN THE LOOP")
+    facts_ribbon(); header()
+    st.markdown("### Keep it in the loop")
     st.write("Reused while it's usable, remade into material when it's spent.")
-    tab_login, tab_signup = st.tabs(["Log in", "Sign up"])
-    with tab_login:
+    t1, t2 = st.tabs(["Log in", "Sign up"])
+    with t1:
         email = st.text_input("Email", key="li_email")
         st.text_input("Password", type="password", key="li_pass")
         if st.button("Log in", type="primary", use_container_width=True):
             if email.strip():
                 st.session_state.user = {"name": email.split("@")[0].replace(".", " ").replace("_", " ")}
                 go("hub"); st.rerun()
-            else:
-                st.warning("Enter your email to continue.")
-    with tab_signup:
+            else: st.warning("Enter your email to continue.")
+    with t2:
         email = st.text_input("Email", key="su_email")
         pw = st.text_input("Create a password", type="password", key="su_pass")
         if st.button("Continue", type="primary", use_container_width=True):
-            if not email.strip():
-                st.warning("Enter your email to continue.")
-            elif len(pw) < 6:
-                st.warning("Password needs at least 6 characters.")
+            if not email.strip(): st.warning("Enter your email to continue.")
+            elif len(pw) < 6: st.warning("Password needs at least 6 characters.")
             else:
-                st.session_state.user = {"email": email}
-                go("profile"); st.rerun()
+                st.session_state.user = {"email": email}; go("profile"); st.rerun()
 
 def page_profile():
-    st.title("Tell us who you are")
-    st.write("This helps match you with the right items, materials and buyers.")
+    facts_ribbon(); header()
+    st.markdown("### Tell us who you are")
     name = st.text_input("Full name")
-    prof = st.selectbox("You are a…",
-        ["Select one…", "Household", "Maker / Student", "Daycare / School / NGO",
-         "Small business / Workshop", "Recycler / Scrap dealer", "Refurbisher / Reseller", "Other"])
+    prof = st.selectbox("You are a…", ["Select one…", "Household", "Maker / Student",
+        "Daycare / School / NGO", "Small business / Workshop", "Recycler / Scrap dealer",
+        "Refurbisher / Reseller", "Other"])
     city = st.text_input("City", placeholder="e.g. Hyderabad")
     if st.button("Enter ReLoop", type="primary"):
-        if not name.strip():
-            st.warning("Add your name to continue.")
-        elif prof == "Select one…":
-            st.warning("Pick what you are to continue.")
+        if not name.strip(): st.warning("Add your name to continue.")
+        elif prof == "Select one…": st.warning("Pick what you are to continue.")
         else:
-            st.session_state.user = {"name": name, "prof": prof, "city": city}
-            go("hub"); st.rerun()
+            st.session_state.user = {"name": name, "prof": prof, "city": city}; go("hub"); st.rerun()
 
 def page_hub():
+    facts_ribbon(); header()
     first = st.session_state.user.get("name", "there").split(" ")[0].title()
-    st.title(f"Hi {first}")
-    st.write("Keep things in the loop — reused while usable, remade when spent. What would you like to do?")
+    st.markdown(f"## Hi {first}")
+    st.write("Keep things in the loop — reused while usable, remade when spent.")
+    st.write("")
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown("#### 🔍 Rescue an item")
-        st.caption("Browse reusable goods and recyclable materials others no longer need — and keep them looping.")
-        if st.button("Rescue an item", use_container_width=True, type="primary"):
-            st.session_state.action = "shop"; go("lane"); st.rerun()
+        with st.container(border=True):
+            st.markdown("#### 🔍 Rescue an item")
+            st.caption("Browse reusable goods and recyclable materials — and keep them looping.")
+            if st.button("Rescue an item", use_container_width=True, type="primary"):
+                st.session_state.action = "shop"; go("lane"); st.rerun()
     with c2:
-        st.markdown("#### 📦 Pass it on")
-        st.caption("List something you're done with — as a usable item or as material — so it reaches its next loop.")
-        if st.button("Pass it on", use_container_width=True):
-            st.session_state.action = "post"; go("lane"); st.rerun()
+        with st.container(border=True):
+            st.markdown("#### 📦 Pass it on")
+            st.caption("List something you're done with — as a usable item or as material.")
+            if st.button("Pass it on", use_container_width=True):
+                st.session_state.action = "post"; go("lane"); st.rerun()
 
 def page_lane():
+    facts_ribbon(); header()
     act = st.session_state.action
-    st.title("What are you looking for?" if act == "shop" else "What are you passing on?")
+    st.markdown("## " + ("What are you looking for?" if act == "shop" else "What are you passing on?"))
     st.caption("Still usable as-is, or only good for material? Pick the lane.")
+    st.write("")
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown('<span class="rl-tag">Still usable as-is</span>', unsafe_allow_html=True)
-        st.markdown("### ♻️ Reuse")
-        st.write("Whole items that still do their job — sold with a price and condition, often in lots for bulk buyers.")
-        st.caption("Sold per item / per lot · ₹ price")
-        if st.button("Enter Reuse lane", use_container_width=True, type="primary"):
-            st.session_state.lane = "reuse"; go("category"); st.rerun()
+        with st.container(border=True):
+            st.markdown("<span class='rl-tag'>Still usable as-is</span>", unsafe_allow_html=True)
+            st.markdown("### ♻️ Reuse")
+            st.caption("Whole items sold with a price & condition — often in lots for bulk buyers.")
+            if st.button("Enter Reuse lane", use_container_width=True, type="primary"):
+                st.session_state.lane = "reuse"; go("category"); st.rerun()
     with c2:
-        st.markdown('<span class="rl-tag recycle">Spent — only good for material</span>', unsafe_allow_html=True)
-        st.markdown("### 🔁 Recycle")
-        st.write("Material to be remade — bought by weight in bulk by recyclers and makers. The part most marketplaces ignore.")
-        st.caption("Sold by weight · ₹ / kg")
-        if st.button("Enter Recycle lane", use_container_width=True):
-            st.session_state.lane = "recycle"; go("category"); st.rerun()
+        with st.container(border=True):
+            st.markdown("<span class='rl-tag'>Spent — only good for material</span>", unsafe_allow_html=True)
+            st.markdown("### 🔁 Recycle")
+            st.caption("Material remade — bought by weight by recyclers & makers.")
+            if st.button("Enter Recycle lane", use_container_width=True):
+                st.session_state.lane = "recycle"; go("category"); st.rerun()
     st.divider()
-    if st.button("← Home"):
-        go("hub"); st.rerun()
-
-def tile_html(emoji, g1, g2):
-    bg = f"radial-gradient(120% 90% at 30% 20%, {lerp('#ffffff', g1, 0.35)}, {g2})"
-    return f'<div class="rl-tile" style="background:{bg}">{emoji}</div>'
-
-GRAD = {  # soft per-category gradients
-    "clothes": ("#ffd9e0", "#f0a8b8"), "toys": ("#fff0c2", "#f2cf86"),
-    "furniture": ("#e7d3b3", "#caa877"), "books": ("#cfe3ff", "#9ec2f0"),
-    "kitchen": ("#d6efe2", "#a3d6c0"), "tools": ("#e3dcc9", "#c3b58e"),
-    "plastic": ("#cfe8ff", "#9ec9f0"), "paper": ("#ead9c3", "#d3b88f"),
-    "metal": ("#dfe3e8", "#b3bcc6"), "glass": ("#cdeede", "#9fd3bd"),
-    "textile": ("#ffd9e0", "#eaa6b6"), "wood": ("#e7d3b3", "#caa877"),
-}
+    if st.button("← Home"): go("hub"); st.rerun()
 
 def page_category():
+    facts_ribbon(); header()
     lane = st.session_state.lane
-    label = LANES[lane]["label"]
-    st.title(f"{label} — pick a {'category' if lane=='reuse' else 'material'}")
-    st.caption("Whole items, sold with a price & condition." if lane == "reuse"
-               else "Material sold by weight (₹/kg) to recyclers & makers.")
+    st.markdown(f"## {LANES[lane]['label']} — pick a {'category' if lane=='reuse' else 'material'}")
+    st.caption("Whole items, priced by condition." if lane == "reuse"
+               else "Material sold by weight (₹/kg).")
     cats = LANES[lane]["cats"]
-    for row in range(0, len(cats), 3):
+    for r in range(0, len(cats), 3):
         cols = st.columns(3)
-        for col, (cid, emoji, name, tag, sub) in zip(cols, cats[row:row+3]):
+        for col, (cid, name, tag, sub) in zip(cols, cats[r:r+3]):
             with col:
-                g1, g2 = GRAD[cid]
-                st.markdown('<div class="rl-card">' + tile_html(emoji, g1, g2) +
-                            f'<span class="rl-tag {"recycle" if lane=="recycle" else ""}">{tag}</span>'
-                            f'<div class="rl-name">{name}</div><div class="rl-sub">{sub}</div></div>',
-                            unsafe_allow_html=True)
-                st.write("")
-                if st.button(("Browse" if st.session_state.action == "shop" else "List here"),
-                             key=f"cat_{cid}", use_container_width=True):
-                    st.session_state.category = cid
-                    go("list" if st.session_state.action == "shop" else "post"); st.rerun()
+                with st.container(border=True):
+                    p = cat_image_path(cid)
+                    if p:
+                        st.image(p, use_container_width=True)
+                    else:
+                        st.markdown(illo(cid), unsafe_allow_html=True)
+                    st.markdown(f"<span class='rl-tag'>{tag}</span>"
+                                f"<div class='rl-name'>{name}</div>"
+                                f"<div class='rl-sub'>{sub}</div>", unsafe_allow_html=True)
+                    st.write("")
+                    if st.button("Browse" if st.session_state.action == "shop" else "List here",
+                                 key=f"cat_{cid}", use_container_width=True):
+                        st.session_state.category = cid
+                        go("list" if st.session_state.action == "shop" else "post"); st.rerun()
     st.divider()
-    if st.button("← Back"):
-        go("lane"); st.rerun()
+    if st.button("← Back"): go("lane"); st.rerun()
+
+def card_image(it, cid):
+    if it.get("img"):
+        st.image(it["img"], use_container_width=True)
+        return
+    p = cat_image_path(cid)
+    if p:
+        st.image(p, use_container_width=True)
+    else:
+        st.markdown(illo(cid), unsafe_allow_html=True)
 
 def page_list():
-    lane = st.session_state.lane
-    cid = st.session_state.category
-    cat_name = next(c[2] for c in LANES[lane]["cats"] if c[0] == cid)
-    st.title(cat_name)
+    facts_ribbon(); header()
+    lane = st.session_state.lane; cid = st.session_state.category
+    cat_name = next(c[1] for c in LANES[lane]["cats"] if c[0] == cid)
+    st.markdown(f"## {cat_name}")
     st.caption("Priced items & lots — reuse as-is." if lane == "reuse"
                else "Sold by weight — material for remaking.")
 
@@ -312,47 +406,46 @@ def page_list():
     else:
         seeded = [{"t": t, "m": m, "price": p, "weight": w} for (t, m, p, w) in SEED.get(cid, [])]
     items = mine + seeded
+    if not items: st.info("Nothing here yet — be the first to add something.")
 
-    if not items:
-        st.info("Nothing here yet — be the first to add something.")
-    for row in range(0, len(items), 3):
+    for r in range(0, len(items), 3):
         cols = st.columns(3)
-        for col, it in zip(cols, items[row:row+3]):
+        for col, it in zip(cols, items[r:r+3]):
             with col:
-                g1, g2 = GRAD[cid]
-                ribbon = "REUSE" if lane == "reuse" else "BY WEIGHT"
-                buyer = f'<div class="rl-buyer">Bought by {it["buyer"]}</div>' if it.get("buyer") else ""
-                price = it["price"] if lane == "reuse" else f'{it["price"]} · {it.get("weight","")}'
-                st.markdown('<div class="rl-card">' + tile_html(EMOJI[cid], g1, g2) +
-                            f'<span class="rl-tag {"recycle" if lane=="recycle" else ""}">{ribbon}</span>'
-                            f'<div class="rl-name">{it["t"]}</div>'
-                            f'<div class="rl-meta">{it["m"]}</div>{buyer}'
-                            f'<div class="rl-price">{price}</div></div>', unsafe_allow_html=True)
-                st.write("")
-                key = f"take_{cid}_{row}_{it['t']}"
-                if key in st.session_state.rescued:
-                    st.success("✓ " + ("Rescued" if lane == "reuse" else "Requested"))
-                else:
-                    if st.button("Rescue" if lane == "reuse" else "Request pickup",
-                                 key=key, use_container_width=True, type="primary"):
+                with st.container(border=True):
+                    card_image(it, cid)
+                    ribbon = "REUSE" if lane == "reuse" else "BY WEIGHT"
+                    st.markdown(f"<span class='rl-tag'>{ribbon}</span>"
+                                f"<div class='rl-name'>{it['t']}</div>"
+                                f"<div class='rl-meta'>{it['m']}</div>", unsafe_allow_html=True)
+                    if it.get("buyer"):
+                        st.markdown(f"<div class='rl-buyer'>Bought by {it['buyer']}</div>", unsafe_allow_html=True)
+                    price = it["price"] if lane == "reuse" else f"{it['price']} · {it.get('weight','')}"
+                    st.markdown(f"<div class='rl-price'>{price}</div>", unsafe_allow_html=True)
+                    st.write("")
+                    key = f"take_{cid}_{r}_{it['t']}"
+                    if key in st.session_state.rescued:
+                        st.success("✓ " + ("Rescued" if lane == "reuse" else "Requested"))
+                    elif st.button("Rescue" if lane == "reuse" else "Request pickup",
+                                   key=key, use_container_width=True, type="primary"):
                         st.session_state.rescued.add(key)
-                        if lane == "reuse":
-                            reward(6, 0.6)
-                        else:
-                            reward(8, 3.0)
+                        reward(6, 0.6) if lane == "reuse" else reward(8, 3.0)
                         st.rerun()
     st.divider()
-    if st.button("← Categories"):
-        go("category"); st.rerun()
+    if st.button("← Categories"): go("category"); st.rerun()
 
 def page_post():
-    lane = st.session_state.lane
-    cid = st.session_state.category
-    cat_name = next(c[2] for c in LANES[lane]["cats"] if c[0] == cid)
-    st.title("List a usable item" if lane == "reuse" else "List material (sold by weight)")
+    facts_ribbon(); header()
+    lane = st.session_state.lane; cid = st.session_state.category
+    cat_name = next(c[1] for c in LANES[lane]["cats"] if c[0] == cid)
+    st.markdown("## " + ("List a usable item" if lane == "reuse" else "List material (by weight)"))
     st.caption(f"{LANES[lane]['label']} · {cat_name}")
 
     title = st.text_input("Item name" if lane == "reuse" else "Material name")
+    photo = st.file_uploader("Add a photo (optional)", type=["png", "jpg", "jpeg"])
+    if photo is not None:
+        st.image(photo, caption="Preview", width=220)
+
     if lane == "reuse":
         lot = st.text_input("Lot size / quantity", placeholder="e.g. 25 pieces")
         cond = st.selectbox("Condition", ["Like new", "Good, fully usable", "Worn but works"])
@@ -366,40 +459,37 @@ def page_post():
         if not title.strip():
             st.warning("Give it a name.")
         else:
+            img_bytes = photo.getvalue() if photo is not None else None
             if lane == "reuse":
                 meta = " · ".join([x for x in [lot, cond] if x]) or cond
                 pr = price if price.startswith("₹") else ("₹" + price if price else "Free")
-                item = {"t": title, "m": meta, "price": pr, "buyer": None}
+                item = {"t": title, "m": meta, "price": pr, "buyer": None, "img": img_bytes}
                 reward(6, 0.6)
             else:
                 pr = ("₹" + rate.strip() + " / kg") if rate.strip() else "Negotiable"
-                item = {"t": title, "m": note or "For remaking", "price": pr, "weight": weight}
+                item = {"t": title, "m": note or "For remaking", "price": pr,
+                        "weight": weight, "img": img_bytes}
                 reward(8, 3.0)
             st.session_state.posted.setdefault(cid, []).insert(0, item)
             st.success("Listed! It's now in the loop 🌱")
-            st.session_state.action = "shop"
-            go("list"); st.rerun()
+            st.session_state.action = "shop"; go("list"); st.rerun()
 
     if lane == "reuse":
         st.divider()
         st.caption("Too worn to reuse? List it as material instead:")
         if st.button("Switch to the Recycle lane →"):
-            mapping = {"clothes": "textile", "furniture": "wood", "toys": "plastic",
-                       "kitchen": "glass", "books": "paper", "tools": "metal"}
-            st.session_state.lane = "recycle"
-            st.session_state.category = mapping.get(cid, "plastic")
+            m = {"clothes": "textile", "furniture": "wood", "toys": "plastic",
+                 "kitchen": "glass", "books": "paper", "tools": "metal"}
+            st.session_state.lane = "recycle"; st.session_state.category = m.get(cid, "plastic")
             go("post"); st.rerun()
-
     st.divider()
-    if st.button("← Categories"):
-        go("category"); st.rerun()
+    if st.button("← Categories"): go("category"); st.rerun()
 
 # ----------------------------------------------------------------------
 # Router
 # ----------------------------------------------------------------------
 sidebar()
-page = st.session_state.page
 {
-    "auth": page_auth, "profile": page_profile, "hub": page_hub,
-    "lane": page_lane, "category": page_category, "list": page_list, "post": page_post,
-}.get(page, page_auth)()
+    "auth": page_auth, "profile": page_profile, "hub": page_hub, "lane": page_lane,
+    "category": page_category, "list": page_list, "post": page_post,
+}.get(st.session_state.page, page_auth)()
